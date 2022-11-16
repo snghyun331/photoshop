@@ -6,6 +6,7 @@ school project (computer vision1)
 * 좌우반전
 * 이미지 흑백
 * 렌즈왜곡
+* 얼굴 모자이크
 * 새로고침
 
 ## tech_discription
@@ -17,4 +18,6 @@ school project (computer vision1)
 → 컬러 이미지를 흑배 이미지로 전환시킨다
 * 렌즈왜곡
 → 카메라 왜곡 보정 기능
+* 얼굴 모자이크
+→ 얼굴만 탐지하여 모자이크 처리
 * 새로고침
