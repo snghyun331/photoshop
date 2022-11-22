@@ -69,8 +69,15 @@ class MainWindow(QMainWindow):
         print(file_path)
         ## 이미지 갖다 붙이기
         self.image = cv2.imread(file_path[0])   # 튜플형태, [0]: 이미지명
+        
+        h, w = self.image.shape[:2]
+        if (h>=800) or (w>=800):
+            self.image = cv2.resize(self.image, (w//2, h//2))
+            
         height, weight, _ = self.image.shape   
         bytese_per_line = 3 * weight
+        
+        
         image = QImage(
             self.image.data, weight,height, bytese_per_line, QImage.Format_RGB888
         ).rgbSwapped()
@@ -135,11 +142,12 @@ class MainWindow(QMainWindow):
         
         pixmap = QPixmap(image3)
         self.label2.setPixmap(pixmap)
-        
-
+               
+    # 얼굴 모자이크    
     def face_mosaic(self):
         img = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
-        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img_gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
         
         xml = 'opencv/haarcascade_frontalface_default.xml'
         face_cascade = cv2.CascadeClassifier(xml)
@@ -160,6 +168,7 @@ class MainWindow(QMainWindow):
         self.label2.setPixmap(pixmap)
         
         
+        
     # 새로고침
     def clear_label(self):
         self.label2.clear()
@@ -174,38 +183,8 @@ if __name__ == "__main__":
         
         
         
-        
-## cascadeclassifier Test
-
-# import cv2
-
-# img = cv2.imread('ive.jpg')
-# img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-# img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-# xml = 'opencv/haarcascade_frontalface_default.xml'
-# face_cascade = cv2.CascadeClassifier(xml)
-# faces = face_cascade.detectMultiScale(img_gray, 1.2, 5)
-# # faces = face_cascade.detectMultiScale(img_gray)   --> 이상한 부분 하나 탐지됨
-# print("Number of faces detected: " + str(len(faces)))
-# print(faces)  # face 좌표 (x,y,w,h)
+    # https://velog.io/@bangsy/Python-OpenCV1
+    # https://bskyvision.com/entry/pyside-keepaspectratio
+       
 
 
-# for (x,y,w,h) in faces:
-#     cv2.rectangle(img,(x,y),(x+w,y+h),(255,0,0),2)
-    
-# import matplotlib.pyplot as plt
-# plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), cmap='gray')
-# plt.xticks([]), plt.yticks([]) 
-# plt.show()
-
-# ratio = 0.1
-# for (x,y,w,h) in faces:
-#     small = cv2.resize(img[y: y + h, x: x + w], None, fx=ratio, fy=ratio, interpolation=cv2.INTER_NEAREST)
-#     img[y: y + h, x: x + w] = cv2.resize(small, (w, h), interpolation=cv2.INTER_NEAREST)
-
-# print(img.shape)
-
-
-# plt.imshow(img)
-# plt.show()
