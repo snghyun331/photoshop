@@ -2,7 +2,8 @@ import sys
 import numpy as np
 from turtle import window_height
 import cv2
-from PySide6.QtGui import QAction, QImage, QPixmap
+from PySide6.QtGui import QAction, QImage, QPixmap, QIcon, QPainter, QPen, QColor
+from PySide6.QtCore import QSize, Qt, QPoint
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QMainWindow, QHBoxLayout, QVBoxLayout, QPushButton,
     QFileDialog
@@ -14,11 +15,16 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Simple Photoshop")
 
         # 메뉴바 만들기
+        filetoolbar = self.addToolBar("File")
         self.menu = self.menuBar()   # 변수 생성
         self.menu_file = self.menu.addMenu("파일")    # 변수 생성
-        exit = QAction("나가기", self, triggered = qApp.quit)
+        exit = QAction(QIcon("exit.png"),"나가기", self, triggered = qApp.quit)
+        save = QAction(QIcon("save.png"), "이미지 저장", self, triggered = self.save_image)
+        filetoolbar.addAction(exit)
+        filetoolbar.addAction(save)
         self.menu_file.addAction(exit)
-
+        self.menu_file.addAction(save)
+        
         # 메인화면 레이아웃
         main_layout = QHBoxLayout()
 
@@ -29,14 +35,16 @@ class MainWindow(QMainWindow):
         button3 = QPushButton("이미지 흑백")
         button4 = QPushButton("렌즈왜곡")
         button5 = QPushButton("얼굴 모자이크")
-        button6 = QPushButton("새로고침")
+        button6 = QPushButton("그리기")
+        button7 = QPushButton("새로고침")
         
         button1.clicked.connect(self.show_file_dialog)   # 이전버전은 clicked X, triggered 0
         button2.clicked.connect(self.flip_image)
         button3.clicked.connect(self.make_gray)
         button4.clicked.connect(self.lens_distortion)
         button5.clicked.connect(self.face_mosaic)
-        button6.clicked.connect(self.clear_label)
+        button6.clicked.connect(self.show_drawed_image)
+        button7.clicked.connect(self.clear_label)
         
         sidebar.addWidget(button1)
         sidebar.addWidget(button2)
@@ -44,6 +52,7 @@ class MainWindow(QMainWindow):
         sidebar.addWidget(button4)
         sidebar.addWidget(button5)
         sidebar.addWidget(button6)
+        sidebar.addWidget(button7)
 
         main_layout.addLayout(sidebar)
 
@@ -62,59 +71,70 @@ class MainWindow(QMainWindow):
         widget.setLayout(main_layout)
         self.setCentralWidget(widget)
 
+        
+        
     # 이미지 열기
     def show_file_dialog(self):
         ## 경로 창 만들기
-        file_path = QFileDialog.getOpenFileName(self, "이미지 열기", "./")  # 경로: 현재경로
-        print(file_path)
+        self.file_path = QFileDialog.getOpenFileName(self, "이미지 열기", "./")  # 경로: 현재경로
+        print(self.file_path)
         ## 이미지 갖다 붙이기
-        self.image = cv2.imread(file_path[0])   # 튜플형태, [0]: 이미지명
+        self.image = cv2.imread(self.file_path[0])   # 튜플형태, [0]: 이미지명
         
         h, w = self.image.shape[:2]
-        if (h>=800) or (w>=800):
+        if (1300>=h>=800) or (1300>=w>=800):
             self.image = cv2.resize(self.image, (w//2, h//2))
-            
+        elif (h>=1300) or (w>=1300):
+            self.image = cv2.resize(self.image, (w//3, h//3))    
+        elif (h<=300) or (w<=300):
+            self.image = cv2.resize(self.image, (w*2, h*2))    
         height, weight, _ = self.image.shape   
         bytese_per_line = 3 * weight
         
+        self.image_copy = self.image
         
         image = QImage(
-            self.image.data, weight,height, bytese_per_line, QImage.Format_RGB888
+            self.image_copy.data, weight,height, bytese_per_line, QImage.Format_RGB888
         ).rgbSwapped()
 
         pixmap = QPixmap(image)
         self.label1.setPixmap(pixmap)
 
+        
+        
     # 좌우반전
     def flip_image(self):
-        image = cv2.flip(self.image, 1)    # 1: 좌우반전
-        height, weight, _ = image.shape   
+        self.image_copy = cv2.flip(self.image_copy, 1)    # 1: 좌우반전
+        height, weight, _ = self.image_copy.shape   
         bytese_per_line = 3 * weight
         image = QImage(
-            image.data, weight,height, bytese_per_line, QImage.Format_RGB888
+            self.image_copy.data, weight,height, bytese_per_line, QImage.Format_RGB888
         ).rgbSwapped()
 
         pixmap = QPixmap(image)
         self.label2.setPixmap(pixmap)
 
+        
+        
     # 이미지 흑백
     def make_gray(self):
-        gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
-        image1 = np.expand_dims(gray, axis = -1) * np.ones((1,1,3))
-        image2 = image1.astype(np.uint8)
-        height, weight, _ = image2.shape   
+        self.image_copy = cv2.cvtColor(self.image_copy, cv2.COLOR_BGR2GRAY)
+        self.image_copy = np.expand_dims(self.image_copy, axis = -1) * np.ones((1,1,3))
+        self.image_copy = self.image_copy.astype(np.uint8)
+        height, weight, _ = self.image_copy.shape   
         bytese_per_line = 3 * weight
-        image3 = QImage(
-            image2.data, weight, height, bytese_per_line, QImage.Format_RGB888
+        image = QImage(
+            self.image_copy.data, weight, height, bytese_per_line, QImage.Format_RGB888
         ).rgbSwapped()
         
-        pixmap = QPixmap(image3)
+        pixmap = QPixmap(image)
         self.label2.setPixmap(pixmap)
         
     
+    
     # 렌즈 왜곡
     def lens_distortion(self):
-        image = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
+        image = cv2.cvtColor(self.image_copy, cv2.COLOR_BGR2RGB)
         h, w = image.shape[:2]
 
         exp = 2  # 볼록지수 1.1 ~, 오목지수 0.1 ~ 1.0
@@ -139,15 +159,19 @@ class MainWindow(QMainWindow):
         image3 = QImage(
             distorted2.data, weight, height, bytese_per_line, QImage.Format_RGB888
         ).rgbSwapped()
+        self.image_copy = distorted2
         
         pixmap = QPixmap(image3)
+        
         self.label2.setPixmap(pixmap)
                
+            
+            
     # 얼굴 모자이크    
     def face_mosaic(self):
-        img = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
+        img = cv2.cvtColor(self.image_copy, cv2.COLOR_BGR2RGB)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img_gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
+        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         
         xml = 'opencv/haarcascade_frontalface_default.xml'
         face_cascade = cv2.CascadeClassifier(xml)
@@ -164,15 +188,60 @@ class MainWindow(QMainWindow):
             img.data, weight, height, bytese_per_line, QImage.Format_RGB888
         ).rgbSwapped()
         
+        self.image_copy = img
+        
+        pixmap = QPixmap(image3)
+        self.label2.setPixmap(pixmap)
+    
+    
+    
+    # 이미지에 그림그리기
+    px = -1
+    py = -1    
+    def draw_mouse(self,event, x, y, flags, params):
+        global px, py
+        if event == cv2.EVENT_LBUTTONDOWN:    # 마우스 왼쪽이 눌러지면 실행
+            px, py = x, y                     # 마우스를 눌렀을 때 좌표 저장, 띄워진 영상에서의 좌측
+        elif event == cv2.EVENT_MOUSEMOVE:    # 마우스가 움직일 때 발생
+            if flags & cv2.EVENT_FLAG_LBUTTON:     # == 를 쓰면 다른 키도 입력되었을 때 작동안하므로 &(and)사용
+                cv2.line(self.image_copy, (px, py), (x,y), (255,51,255), 15, cv2.LINE_AA)   # circle은 끊기므로 line으로..
+                cv2.imshow("draw",self.image_copy)
+                px, py = x, y
+        
+    def show_drawed_image(self):
+        cv2.namedWindow("draw")
+        cv2.setMouseCallback("draw", self.draw_mouse, self.image_copy)  
+        cv2.imshow("draw",self.image_copy)
+        cv2.waitKey()
+        cv2.destroyAllWindows()
+        
+        height, weight, _ = self.image_copy.shape
+        bytese_per_line = 3 * weight
+        
+        image3 = QImage(
+            self.image_copy.data, weight, height, bytese_per_line, QImage.Format_RGB888
+        ).rgbSwapped()
+        
         pixmap = QPixmap(image3)
         self.label2.setPixmap(pixmap)
         
-        
-        
+    
+    
     # 새로고침
     def clear_label(self):
         self.label2.clear()
+        self.image_copy = self.image
 
+        
+        
+    # 이미지 저장
+    def save_image(self):
+        image_saver = self.label2.pixmap()
+        image_saver.save("SavedImage.jpg")
+    
+        
+        
+            
 if __name__ == "__main__":
     app = QApplication()
     window = MainWindow()
@@ -180,11 +249,7 @@ if __name__ == "__main__":
     sys.exit(app.exec())   # sys : 내장 메모리
 
         
-        
-        
-        
-    # https://velog.io/@bangsy/Python-OpenCV1
-    # https://bskyvision.com/entry/pyside-keepaspectratio
-       
 
+    
+       
 
